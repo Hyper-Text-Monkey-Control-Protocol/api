@@ -148,4 +148,17 @@ function end_log($token, $time){
 		return False;
 	}
 }
+
+function log_status(){
+	global $db;
+	$uid = verify_session($token);
+	$stmt = $db->prepare('SELECT `id`, `start_time` FROM `log` WHERE `uid`=:uid, `end_time`=NULL');
+	$stmt->execute(['uid' => $uid]);
+	$res = $stmt->fetch(PDO::FETCH_ASSOC)['id'];
+	if ($res['id']){
+		return array('status' => 'sailing', 'time' => $start_time);
+	}else{
+		return array('status' => 'ground');
+	}
+}
 ?>
