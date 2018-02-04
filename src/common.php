@@ -92,10 +92,60 @@ function login($phone, $password){
 		'password' => $password]);
 	$res = $stmt->fetch(PDO::FETCH_ASSOC);
 	if ($res['phone'] == $phone){
+		$token = hash('sha256', rand());
+		$stmt = $db->prepare('INSERT INTO `session` (`uid`, `token`) VALUES (:uid, :token)');
+		$stmt->execute(['uid' => $res['uid'],
+			'token' => $token]);
+		$res['token'] = $token;
 		return $res;
 	}else{
 		return False;
 	}
 }
 
+function verify_session($token){
+	global $db;
+	$stmt = $db->prepare('SELECT * FROM `sessions` WHERE `token`=:token');
+	$stmt->excute(['token' => $token]);
+	$res = $stmt->fetch(PDO::FETCH_ASSOC);
+	if ($res['uid']){
+		return $res['uid'];
+	}else{
+		$output = array('status' => 1, 'example_text' => 'Token Failed');
+		die(json_encode($output));
+	}
+}
+
+function start_log($token, $time){
+	global $db;
+	$uid = verify_session($token);
+	$stmt = $db->prepare('SELECT `id` FROM `log` WHERE `uid`=:uid, `end_time`=NULL');
+	$stmt->execute(['uid' => $uid]);
+	$id = $stmt->fetch(PDO::FETCH_ASSOC)['id'];
+	if ($id){
+		return False;
+	}else{
+		$stmt = $db->prepare('INSERT INTO `log` (`uid`, `start_time`) VALUES (:uid, :start_time)');
+		$stmt->execute(['uid' => $uid,
+			$start_time => $time]);
+		return True;
+	}
+}
+
+function end_log($token, $time){
+	global $db;
+	$uid = verify_session($token);
+	$stmt = $db->prepare('SELECT `id` FROM `log` WHERE `uid`=:uid, `end_time`=NULL');
+	$stmt->execute(['uid' => $uid]);
+	$id = $stmt->fetch(PDO::FETCH_ASSOC)['id'];
+	if ($id){
+		$stmt = $db->prepare('UPDATE `log` SET `end_time`=:end_time WHERE `id`=:id, `uid`=:uid');
+		$stmt->execute(['id' => $id,
+			'uid' => $uid,
+			'end_time' => $time]);
+		return True;
+	}else{
+		return False;
+	}
+}
 ?>
